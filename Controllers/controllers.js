@@ -2,6 +2,7 @@ import User from "../Schema/schema.js"
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer'
+import Product from '../Schema/seller.js'
 // All the important functions up here
 const Secret_key= process.env.SECRET_KEY
 // For hashing the passwords
@@ -79,6 +80,26 @@ export const signup= async(req,res)=>{
     }
 }
 
+
+export const addProducts = async (req, res) => {
+    console.log(req.body);
+    const { quantity, productName, price, email, brand } = req.body;
+        const newProduct = new Product({
+        quantity: quantity,
+        productName: productName,
+        price: price,
+        brand: brand
+    });
+
+    try {
+        await newProduct.save();
+        return res.status(201).send('Product saved successfully');
+    } catch (error) {
+        console.error('An error occurred', error);
+        return res.status(500).send('An error occurred');
+    }
+};
+
 export const Login=async(req,res)=>{
      console.log(req.body)
      const {email,password}=req.body
@@ -113,6 +134,7 @@ export const Login=async(req,res)=>{
      }
 }
 
+
 export const addToCart = async (req, res) => {
     console.log(req.body);
     const { productName, price, brand, email, productId, quantity } = req.body;
@@ -123,12 +145,10 @@ export const addToCart = async (req, res) => {
             return res.status(501).send('Please signup to add products to cart');
         }
 
-        const product = user.cart.find(item => item.productId === productId);
+        let product = user.cart.find(item => item.productId.toString() === productId.toString());
         if (product) {
-            
             product.quantity = parseInt(product.quantity) + parseInt(quantity);
             await user.save();
-
             console.log('Updated quantity:', product.quantity);
             return res.status(201).send(`${quantity} product added to the cart`);
         } else {
@@ -151,18 +171,12 @@ export const removeCartProduct =async(req,res)=>{
         if(!user){
             return res.status(501).send('Please signup/login to remove')
         }
-        else{
-            const product = user.cart.findIndex(item => item.productId === productId);
-            if(!product===-1){
-               return res.status(404).send('product not found')
-            }
-            else{
-                user.cart= user.cart.filter(item=>item.productId !==productId)
-                    await user.save();
-                    return res.status(200).send('Product removed from cart');
-                
-            }
-        }
+        else {
+            user.cart = user.cart.filter(item => item.productId.toString() !== productId.toString());
+            await user.save();
+            console.log(user.cart);
+            return res.status(200).send('Product removed from cart');
+        }        
     } catch (error) {
           console.log('Something went wrong',error)
     }
