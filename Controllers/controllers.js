@@ -88,7 +88,7 @@ export const updateDetails=async(req,res)=>{
     try {
         const user = await User.findOne({email})
         if(!user){
-            return res.status(501).json({message:'User Doesn"nt exist'})
+            return res.status(501).json({error:'User Doesn"nt exist'})
         }
         else{
             if(name) user.name=name;
@@ -115,12 +115,12 @@ export const addProducts = async (req, res) => {
 
     try {
         if (!req.files) {
-            return res.status(400).json({message:'No file uploaded'});
+            return res.status(400).json({error:'No file uploaded'});
         }
         const avatarLocalPath = req.files?.avatar[0]?.path;
         const coverImageLocalPath = req.files?.coverImage[0]?.path
         if(!avatarLocalPath){
-           return res.status(404).send('no files found')
+           return res.status(404).json({error:'no files found'})
         }
         const avatarResponse= await uploadOnCloudinary(avatarLocalPath)
         const coverImage= await uploadOnCloudinary(coverImageLocalPath)
