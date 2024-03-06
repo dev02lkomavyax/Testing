@@ -53,10 +53,10 @@ export const signup= async(req,res)=>{
         const {email,password, name,task}= req.body
         const user = await User.findOne({email})
         if(user){
-            res.status(501).send('Email Already exists')
+            res.status(501).json({error:'Email Already exists'})
         }
         else if(email.length<5 ||password.length<6  ||task.length<3){
-            res.status(501).send('please enter the correct details');
+            res.status(501).json({message:'please enter the correct details'});
 
         }   
         else{
@@ -68,7 +68,7 @@ export const signup= async(req,res)=>{
                 const hashPassword=await hashPass(password)
                 const newUser= new User({name,email,task,password:hashPassword,otp,expiry})
                 await newUser.save();
-                return res.status(201).send({ message: 'And here we go Buddy!', email });
+                return res.status(201).json({ message: 'And here we go Buddy!', email });
             }
             else{
                 console.log('Please try again later')
@@ -76,7 +76,7 @@ export const signup= async(req,res)=>{
         }
       
     } catch (error) {
-        res.status(501).send('an error occured')
+        res.status(501).json({message:'an error occured'})
         console.log('An error Occured',error)
     }
 }
@@ -88,7 +88,7 @@ export const updateDetails=async(req,res)=>{
     try {
         const user = await User.findOne({email})
         if(!user){
-            return res.status(501).send('User Doesn"nt exist')
+            return res.status(501).json({message:'User Doesn"nt exist'})
         }
         else{
             if(name) user.name=name;
@@ -99,11 +99,12 @@ export const updateDetails=async(req,res)=>{
                 user.password=updatedPassword;
             }
             await user.save();
-            return res.status(201).send("Updated successfully")
+            return res.status(201).json({message:"Updated successfully"})
         }
         
     } catch (error) {
-        console.log("Something went wrong",error)
+        return res.status(501).json({message:"Error occured"})
+        // console.log("Something went wrong",error)
     }
 }
 
@@ -114,7 +115,7 @@ export const addProducts = async (req, res) => {
 
     try {
         if (!req.files) {
-            return res.status(400).send('No file uploaded');
+            return res.status(400).json({message:'No file uploaded'});
         }
         const avatarLocalPath = req.files?.avatar[0]?.path;
         const coverImageLocalPath = req.files?.coverImage[0]?.path
@@ -128,7 +129,7 @@ export const addProducts = async (req, res) => {
         
         if(!avatarResponse){
             console.log('an error occured')
-            return res.status(500).send("No files found")
+            return res.status(500).json({error:"No files found"})
         }
         const newProduct = new Product({
             quantity: quantity,
@@ -140,7 +141,7 @@ export const addProducts = async (req, res) => {
         });
 
         await newProduct.save();
-        return res.status(201).send('Product saved successfully');
+        return res.status(201).json({success:'Product saved successfully'});
             
         }
      catch (error) {
@@ -154,17 +155,18 @@ export const logout= async(req,res)=>{
     try {
 
         res.clearCookie('token');
-        res.status(200).send('Logout successful');
+        res.status(200).json({success:'Logout successful'});
     } catch (error) {
-        console.log('something went wrong')
+       res.status(501).send('something went wrong')
     }
 }
 export const getProducts= async(req,res)=>{
     try {
         const products= await Product.find();
-        return res.status(201).send(products)
+        return res.status(201).json(products)
     } catch (error) {
         console.log('Something went wrong',error)
+        return res.status(501).send("An error occured")
     }
 }
 export const Login=async(req,res)=>{
@@ -174,25 +176,25 @@ export const Login=async(req,res)=>{
      try {
         const user =await User.findOne({email})
         if(!user){
-            res.status(501).send('User doesn"t exist');
+            res.status(501).json({error:'User doesn"t exist'});
         }
         else
        {
         if(!email || email.length<5){
-            res.status(501).send('Please enter your email');
+            res.status(501).json({error:'Please enter your email'});
         }
         else if(!password ||password.length<6){
-            res.status(501).send('password is incorrect');
+            res.status(501).json({error:'password is incorrect'});
         }
         else{
             const isValid= await comparePass(password,user.password)
             if(!isValid){
-                res.status(501).send('Your password is invalid');
+                res.status(501).json({error:'Your password is invalid'});
             }
             else{
                 const token= jwt.sign({email:email,userId:user._id},Secret_key,{expiresIn:"1d"})
                 res.cookie('authToken', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
-                res.status(201).send({success:'Login successful',token:token,userId:user._id})
+                res.status(201).json({success:'Login successful',token:token,userId:user._id})
             }
         }
        }
@@ -208,16 +210,16 @@ export const ValidateOtp= async(req,res)=>{
     try {
         const user = await User.findOne({email})
         if(!user){
-           return res.status(400).send("please try again");
+           return res.status(400).json({error:"please try again"});
         }
         else{
             if(otp===user.otp){
                 user.isVerified=true;
                 await user.save();
-                return res.status(201).send({success:"user registered successfully"})
+                return res.status(201).json({success:"user registered successfully"})
             }
             else if(otp!==user.otp){
-                return res.status(400).send("Invalid Otp")
+                return res.status(400).json({error:"Invalid Otp"})
             }
             else{
                 return res.status(500).send("something went wrong please try again later")
@@ -234,7 +236,7 @@ export const addToCart = async (req, res) => {
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(501).send('Please signup to add products to cart');
+            return res.status(501).json({error:'Please signup to add products to cart'});
         }
 
         let product = user.cart.find(item => item.productId.toString() === productId.toString());
@@ -242,12 +244,12 @@ export const addToCart = async (req, res) => {
             product.quantity = parseInt(product.quantity) + parseInt(quantity);
             await user.save();
             console.log('Updated quantity:', product.quantity);
-            return res.status(201).send(`${quantity} product added to the cart`);
+            return res.status(201).json({success:`${quantity} product added to the cart`});
         } else {
             const cartProduct = { productName, price, brand, productId, quantity };
             user.cart.push(cartProduct);
             await user.save();
-            return res.status(201).send(`${quantity} product added to the cart`);
+            return res.status(201).json({success:`${quantity} product added to the cart`});
         }
     } catch (error) {
         console.error('An error occurred', error);
@@ -261,15 +263,16 @@ export const removeCartProduct =async(req,res)=>{
     try {
         const user =await User.findOne({email})
         if(!user){
-            return res.status(501).send('Please signup/login to remove')
+            return res.status(501).json({error:'Please signup/login to remove'})
         }
         else {
             user.cart = user.cart.filter(item => item.productId.toString() !== productId.toString());
             await user.save();
             console.log(user.cart);
-            return res.status(200).send('Product removed from cart');
+            return res.status(200).json({success:'Product removed from cart'});
         }        
     } catch (error) {
+        return res.status(501).send("An internal server error")
           console.log('Something went wrong',error)
     }
 }
