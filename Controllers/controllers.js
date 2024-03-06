@@ -56,7 +56,7 @@ export const signup= async(req,res)=>{
             res.status(501).json({error:'Email Already exists'})
         }
         else if(email.length<5 ||password.length<6  ||task.length<3){
-            res.status(501).json({message:'please enter the correct details'});
+            res.status(501).json({error:'please enter the correct details'});
 
         }   
         else{
@@ -68,10 +68,10 @@ export const signup= async(req,res)=>{
                 const hashPassword=await hashPass(password)
                 const newUser= new User({name,email,task,password:hashPassword,otp,expiry})
                 await newUser.save();
-                return res.status(201).json({ message: 'And here we go Buddy!', email });
+                return res.status(201).json({ success: 'And here we go Buddy!', email });
             }
             else{
-                console.log('Please try again later')
+                return res.status(401).json({error:'Please try again later'})
             }
         }
       
@@ -99,11 +99,11 @@ export const updateDetails=async(req,res)=>{
                 user.password=updatedPassword;
             }
             await user.save();
-            return res.status(201).json({message:"Updated successfully"})
+            return res.status(201).json({success:"Updated successfully"})
         }
         
     } catch (error) {
-        return res.status(501).json({message:"Error occured"})
+        return res.status(501).send("Error occured")
         // console.log("Something went wrong",error)
     }
 }
