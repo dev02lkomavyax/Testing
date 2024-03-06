@@ -3,13 +3,14 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer'
 import Product from '../Schema/seller.js'
+import uploadOnCloudinary from '../utils/cloudinary.js'
 // All the important functions up here
 const Secret_key= process.env.SECRET_KEY
 // For hashing the passwords
 const hashPass= async(password)=>{
     return await bcrypt.hash(password,10)
 }
-// For comparing the password while login
+
 const comparePass= async(password,dbPassword)=>{
     return await bcrypt.compare(password,dbPassword);
 }
@@ -67,7 +68,7 @@ export const signup= async(req,res)=>{
                 const hashPassword=await hashPass(password)
                 const newUser= new User({name,email,task,password:hashPassword,otp,expiry})
                 await newUser.save();
-                res.status(201).send('And here we go Buddy!')
+                return res.status(201).send({ message: 'And here we go Buddy!', email });
             }
             else{
                 console.log('Please try again later')
@@ -80,26 +81,92 @@ export const signup= async(req,res)=>{
     }
 }
 
-
-export const addProducts = async (req, res) => {
-    console.log(req.body);
-    const { quantity, productName, price, email, brand } = req.body;
-        const newProduct = new Product({
-        quantity: quantity,
-        productName: productName,
-        price: price,
-        brand: brand
-    });
+export const updateDetails=async(req,res)=>{
+    console.log(req.body)
+    const {name,email,password,task}=req.body
 
     try {
+        const user = await User.findOne({email})
+        if(!user){
+            return res.status(501).send('User Doesn"nt exist')
+        }
+        else{
+            if(name) user.name=name;
+            if(task) user.task=task;
+            if(email) user.email=email;
+            if(password){
+                const updatedPassword=await hashPass(password);
+                user.password=updatedPassword;
+            }
+            await user.save();
+            return res.status(201).send("Updated successfully")
+        }
+        
+    } catch (error) {
+        console.log("Something went wrong",error)
+    }
+}
+
+// For adding products to Db
+export const addProducts = async (req, res) => {
+    const { quantity, productName, price, brand } = req.body;
+    console.log(req.files.avatar[0].path)
+
+    try {
+        if (!req.files) {
+            return res.status(400).send('No file uploaded');
+        }
+        const avatarLocalPath = req.files?.avatar[0]?.path;
+        const coverImageLocalPath = req.files?.coverImage[0]?.path
+        if(!avatarLocalPath){
+           return res.status(404).send('no files found')
+        }
+        const avatarResponse= await uploadOnCloudinary(avatarLocalPath)
+        const coverImage= await uploadOnCloudinary(coverImageLocalPath)
+        console.log(avatarResponse)
+        console.log(coverImage)
+        
+        if(!avatarResponse){
+            console.log('an error occured')
+            return res.status(500).send("No files found")
+        }
+        const newProduct = new Product({
+            quantity: quantity,
+            productImage: avatarResponse.url,
+            coverImage:coverImage?.url || "",
+            productName: productName,
+            price: price,
+            brand: brand
+        });
+
         await newProduct.save();
         return res.status(201).send('Product saved successfully');
-    } catch (error) {
+            
+        }
+     catch (error) {
         console.error('An error occurred', error);
         return res.status(500).send('An error occurred');
     }
 };
+export const logout= async(req,res)=>{
+    // console.log(req.cookies)
+    console.log(JSON.stringify(req.cookies));
+    try {
 
+        res.clearCookie('token');
+        res.status(200).send('Logout successful');
+    } catch (error) {
+        console.log('something went wrong')
+    }
+}
+export const getProducts= async(req,res)=>{
+    try {
+        const products= await Product.find();
+        return res.status(201).send(products)
+    } catch (error) {
+        console.log('Something went wrong',error)
+    }
+}
 export const Login=async(req,res)=>{
      console.log(req.body)
      const {email,password}=req.body
@@ -124,6 +191,7 @@ export const Login=async(req,res)=>{
             }
             else{
                 const token= jwt.sign({email:email,userId:user._id},Secret_key,{expiresIn:"1d"})
+                res.cookie('authToken', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
                 res.status(201).send({success:'Login successful',token:token,userId:user._id})
             }
         }
@@ -134,7 +202,31 @@ export const Login=async(req,res)=>{
      }
 }
 
-
+export const ValidateOtp= async(req,res)=>{
+    console.log(req.body);
+    const{email,otp}=req.body
+    try {
+        const user = await User.findOne({email})
+        if(!user){
+           return res.status(400).send("please try again");
+        }
+        else{
+            if(otp===user.otp){
+                user.isVerified=true;
+                await user.save();
+                return res.status(201).send({success:"user registered successfully"})
+            }
+            else if(otp!==user.otp){
+                return res.status(400).send("Invalid Otp")
+            }
+            else{
+                return res.status(500).send("something went wrong please try again later")
+            }
+        }
+    } catch (error) {
+        console.log("something went wrong")
+    }
+}
 export const addToCart = async (req, res) => {
     console.log(req.body);
     const { productName, price, brand, email, productId, quantity } = req.body;
@@ -182,7 +274,3 @@ export const removeCartProduct =async(req,res)=>{
     }
 }
 
-// export const updateCart= async(req,res)=>{
-//         console.log(req.body)
-//         const {productId}
-// }

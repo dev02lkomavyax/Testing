@@ -27,7 +27,10 @@ const schema = new mongoose.Schema({
         type:String,
         required:true,
     },
-    
+    isVerified:{
+        type:Boolean,
+        default:false,
+    },
     cart: [{ 
         productName: String,
         price: Number,
