@@ -21,7 +21,7 @@ const sendMail = async(email,otp)=>{
             service:'Gmail',
             auth:{
                 user:"aditya22950@gmail.com",
-                pass:"qwvuqjhbjteczaoi"
+                pass:"qwvuqjhbjtezaoi"
             }
         }
     )
